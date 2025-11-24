@@ -1,0 +1,99 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss
+	xmlns:atom="http://www.w3.org/2005/Atom"
+	xmlns:media="http://search.yahoo.com/mrss/" version="2.0">
+	<channel>
+		<title>SteamDB Builds for Counter-Strike 2</title>
+		<link>https://steamdb.info/app/730/patchnotes/</link>
+		<description>SteamDB builds for Counter-Strike 2</description>
+		<pubDate>Fri, 21 Nov 2025 22:55:14 +0000</pubDate>
+		<language>en</language>
+		<ttl>3600</ttl>
+		<image>
+			<title>SteamDB Builds for Counter-Strike 2</title>
+			<link>https://steamdb.info/app/730/patchnotes/</link>
+			<url>https://steamdb.info/static/logos/512px.png</url>
+		</image>
+		<atom:link rel="self" href="https://steamdb.info/api/PatchnotesRSS/?appid=730" type="application/rss+xml"/>
+		<item>
+			<guid isPermaLink="false">build#20897362</guid>
+			<title>Counter-Strike 2 update for 21 November 2025</title>
+			<link>https://steamdb.info/patchnotes/20897362/?utm_source=rss&amp;utm_medium=rss&amp;utm_campaign=Patchnotes</link>
+			<description>SteamDB Build 20897362</description>
+			<pubDate>Fri, 21 Nov 2025 22:55:14 +0000</pubDate>
+			<media:thumbnail width="1200" height="630" url="https://steamdb.info/patchnotes/20897362.png?_=1763765714"/>
+		</item>
+		<item>
+			<guid isPermaLink="false">build#20865201</guid>
+			<title>Counter-Strike 2 update for 19 November 2025</title>
+			<link>https://steamdb.info/patchnotes/20865201/?utm_source=rss&amp;utm_medium=rss&amp;utm_campaign=Patchnotes</link>
+			<description>Counter-Strike 2 Update (SteamDB Build 20865201)</description>
+			<pubDate>Wed, 19 Nov 2025 23:47:09 +0000</pubDate>
+			<media:thumbnail width="1200" height="630" url="https://steamdb.info/patchnotes/20865201.png?_=1763596322"/>
+		</item>
+		<item>
+			<guid isPermaLink="false">build#20852487</guid>
+			<title>Counter-Strike 2 update for 19 November 2025</title>
+			<link>https://steamdb.info/patchnotes/20852487/?utm_source=rss&amp;utm_medium=rss&amp;utm_campaign=Patchnotes</link>
+			<description>SteamDB Build 20852487</description>
+			<pubDate>Wed, 19 Nov 2025 02:26:31 +0000</pubDate>
+			<media:thumbnail width="1200" height="630" url="https://steamdb.info/patchnotes/20852487.png?_=1763519191"/>
+		</item>
+		<item>
+			<guid isPermaLink="false">build#20791778</guid>
+			<title>Counter-Strike 2 update for 14 November 2025</title>
+			<link>https://steamdb.info/patchnotes/20791778/?utm_source=rss&amp;utm_medium=rss&amp;utm_campaign=Patchnotes</link>
+			<description>Counter-Strike 2 Update (SteamDB Build 20791778)</description>
+			<pubDate>Fri, 14 Nov 2025 01:00:59 +0000</pubDate>
+			<media:thumbnail width="1200" height="630" url="https://steamdb.info/patchnotes/20791778.png?_=1763082362"/>
+		</item>
+		<item>
+			<guid isPermaLink="false">build#20778640</guid>
+			<title>Counter-Strike 2 update for 13 November 2025</title>
+			<link>https://steamdb.info/patchnotes/20778640/?utm_source=rss&amp;utm_medium=rss&amp;utm_campaign=Patchnotes</link>
+			<description>SteamDB Build 20778640</description>
+			<pubDate>Thu, 13 Nov 2025 05:52:46 +0000</pubDate>
+			<media:thumbnail width="1200" height="630" url="https://steamdb.info/patchnotes/20778640.png?_=1763013166"/>
+		</item>
+		<item>
+			<guid isPermaLink="false">build#20776295</guid>
+			<title>Counter-Strike 2 update for 13 November 2025</title>
+			<link>https://steamdb.info/patchnotes/20776295/?utm_source=rss&amp;utm_medium=rss&amp;utm_campaign=Patchnotes</link>
+			<description>SteamDB Build 20776295</description>
+			<pubDate>Thu, 13 Nov 2025 01:35:56 +0000</pubDate>
+			<media:thumbnail width="1200" height="630" url="https://steamdb.info/patchnotes/20776295.png?_=1762997756"/>
+		</item>
+		<item>
+			<guid isPermaLink="false">build#20775075</guid>
+			<title>Counter-Strike 2 update for 12 November 2025</title>
+			<link>https://steamdb.info/patchnotes/20775075/?utm_source=rss&amp;utm_medium=rss&amp;utm_campaign=Patchnotes</link>
+			<description>The StarLadder Budapest Major 2025 (SteamDB Build 20775075)</description>
+			<pubDate>Wed, 12 Nov 2025 22:59:20 +0000</pubDate>
+			<media:thumbnail width="1200" height="630" url="https://steamdb.info/patchnotes/20775075.png?_=1762989184"/>
+		</item>
+		<item>
+			<guid isPermaLink="false">build#20670159</guid>
+			<title>Counter-Strike 2 update for 4 November 2025</title>
+			<link>https://steamdb.info/patchnotes/20670159/?utm_source=rss&amp;utm_medium=rss&amp;utm_campaign=Patchnotes</link>
+			<description>Introducing TrueView (SteamDB Build 20670159)</description>
+			<pubDate>Tue, 04 Nov 2025 23:58:34 +0000</pubDate>
+			<media:thumbnail width="1200" height="630" url="https://steamdb.info/patchnotes/20670159.png?_=1762302293"/>
+		</item>
+		<item>
+			<guid isPermaLink="false">build#20596740</guid>
+			<title>Counter-Strike 2 update for 29 October 2025</title>
+			<link>https://steamdb.info/patchnotes/20596740/?utm_source=rss&amp;utm_medium=rss&amp;utm_campaign=Patchnotes</link>
+			<description>Counter-Strike 2 Update (SteamDB Build 20596740)</description>
+			<pubDate>Wed, 29 Oct 2025 23:35:52 +0000</pubDate>
+			<media:thumbnail width="1200" height="630" url="https://steamdb.info/patchnotes/20596740.png?_=1761781142"/>
+		</item>
+		<item>
+			<guid isPermaLink="false">build#20535897</guid>
+			<title>Counter-Strike 2 update for 24 October 2025</title>
+			<link>https://steamdb.info/patchnotes/20535897/?utm_source=rss&amp;utm_medium=rss&amp;utm_campaign=Patchnotes</link>
+			<description>SteamDB Build 20535897</description>
+			<pubDate>Fri, 24 Oct 2025 22:23:49 +0000</pubDate>
+			<media:thumbnail width="1200" height="630" url="https://steamdb.info/patchnotes/20535897.png?_=1761344629"/>
+		</item>
+	</channel>
+</rss>
