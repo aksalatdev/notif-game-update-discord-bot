@@ -1,12 +1,12 @@
 // ================================
 // CONFIG (Updated)
 // ================================
-const DISCORD_WEBHOOK = 'https://discord.com/api/webhooks/1438786471241846855/LH7aQDYD1noDJwlFCpssaSKB8rK_Ca07WQqylcr_q2m6eJwKQh4mbOnBDZjH4BwGYp7e';
+// const DISCORD_WEBHOOK = 'https://discord.com/api/webhooks/1438786471241846855/LH7aQDYD1noDJwlFCpssaSKB8rK_Ca07WQqylcr_q2m6eJwKQh4mbOnBDZjH4BwGYp7e'; MAIN WEBHOOK
+const DISCORD_WEBHOOK = 'https://discord.com/api/webhooks/1442501127726825512/AGkXMtYQWBzgeDMdnq37PNPvthIjwggdBZoH1hgQ7IKD3c3kPjqD7Hu6UlHO-v6SRk-0'
 
 const VALORANT_RSS = 'https://www.fragster.com/valorant/feed/';
 // Using CORS proxy to bypass Cloudflare protection
-const CS2_RSS_PRIMARY = 'https://api.allorigins.win/raw?url=' + encodeURIComponent('https://steamdb.info/api/PatchnotesRSS/?appid=730');
-const CS2_RSS_FALLBACK = 'https://store.steampowered.com/feeds/news/app/730/';
+const CS2_RSS = 'https://api.allorigins.win/raw?url=' + encodeURIComponent('https://steamdb.info/api/PatchnotesRSS/?appid=730');
 const KV_KEY = 'PATCH_STATE';
 
 // ================================
@@ -95,34 +95,22 @@ async function fetchCS2Items() {
     };
 
     try {
-        console.log('Attempting primary RSS fetch through proxy...');
-        const response = await fetch(CS2_RSS_PRIMARY, {
+        console.log('Fetching CS2 RSS from SteamDB via proxy...');
+        const response = await fetch(CS2_RSS, {
             headers: advancedHeaders,
         });
         
-        if (!response.ok) throw new Error(`Primary fetch failed: ${response.status}`);
-        
-        const xml = await response.text();
-        console.log('Primary fetch successful');
-        return [...xml.matchAll(/<item>([\s\S]*?)<\/item>/g)];
-    } catch (primaryError) {
-        console.warn('Primary method failed, trying fallback:', primaryError.message);
-        
-        // Fallback to Steam Store RSS
-        try {
-            const fallbackResponse = await fetch(CS2_RSS_FALLBACK, {
-                headers: advancedHeaders,
-            });
-            
-            if (!fallbackResponse.ok) throw new Error(`Fallback failed: ${fallbackResponse.status}`);
-            
-            const xml = await fallbackResponse.text();
-            console.log('Fallback fetch successful');
-            return [...xml.matchAll(/<item>([\s\S]*?)<\/item>/g)];
-        } catch (fallbackError) {
-            console.error('All CS2 RSS methods failed:', fallbackError.message);
+        if (!response.ok) {
+            console.error(`CS2 RSS fetch failed: ${response.status}`);
             return [];
         }
+        
+        const xml = await response.text();
+        console.log('CS2 RSS fetch successful');
+        return [...xml.matchAll(/<item>([\s\S]*?)<\/item>/g)];
+    } catch (error) {
+        console.error('CS2 RSS fetch error:', error.message);
+        return [];
     }
 }
 
@@ -131,7 +119,21 @@ async function fetchCS2Items() {
 // ================================
 export default {
     async scheduled(event, env, ctx) {
-        let last = (await env.PATCH_KV.get(KV_KEY, 'json')) || {};
+        console.log('=== SCHEDULED RUN START ===');
+        
+        // Cek apakah KV tersedia
+        if (!env.PATCH_KV) {
+            console.error('CRITICAL: PATCH_KV is not bound!');
+            return;
+        }
+        
+        let last = {};
+        try {
+            last = (await env.PATCH_KV.get(KV_KEY, 'json')) || {};
+            console.log('Current state loaded:', JSON.stringify(last));
+        } catch (kvReadError) {
+            console.error('Failed to read from KV:', kvReadError);
+        }
 
         try {
             await checkValorant(last);
@@ -145,7 +147,18 @@ export default {
             console.error('CS2 error:', e);
         }
 
-        await env.PATCH_KV.put(KV_KEY, JSON.stringify(last));
+        console.log('Attempting to save state:', JSON.stringify(last));
+        try {
+            await env.PATCH_KV.put(KV_KEY, JSON.stringify(last));
+            
+            // Verify save
+            const verify = await env.PATCH_KV.get(KV_KEY, 'json');
+            console.log('State saved and verified:', JSON.stringify(verify));
+        } catch (kvError) {
+            console.error('CRITICAL: Failed to save to KV:', kvError);
+        }
+        
+        console.log('=== SCHEDULED RUN END ===');
     },
 
     async fetch(request, env, ctx) {
@@ -168,12 +181,12 @@ export default {
             if (path.endsWith('/send')) {
                 const officialLink = generateRiotLink(title) || link;
                 await sendEmbed({
-                    title: 'VALORANT Patch Detected!',
-                    description: title,
+                    title: '🧪 [TEST] VALORANT Patch Detected!',
+                    description: `**[TEST MODE - Item 1]**\n${title}`,
                     url: officialLink,
                     color: 10526880,
                 });
-                return new Response('Production-style patch sent!');
+                return new Response('Test patch sent!');
             }
 
             return new Response(`ITEM 1:\n${title}\n${link}`);
@@ -190,12 +203,12 @@ export default {
             if (path.endsWith('/send')) {
                 const officialLink = generateRiotLink(title) || link;
                 await sendEmbed({
-                    title: 'VALORANT Patch Detected!',
-                    description: title,
+                    title: '🧪 [TEST] VALORANT Patch Detected!',
+                    description: `**[TEST MODE - Item 2]**\n${title}`,
                     url: officialLink,
                     color: 10526880,
                 });
-                return new Response('Production-style patch sent!');
+                return new Response('Test patch sent!');
             }
 
             return new Response(`ITEM 2:\n${title}\n${link}`);
@@ -213,12 +226,12 @@ export default {
                     if (path.endsWith('/send')) {
                         const officialLink = generateRiotLink(title) || link;
                         await sendEmbed({
-                            title: 'VALORANT Patch Detected!',
-                            description: title,
+                            title: '🧪 [TEST] VALORANT Patch Detected!',
+                            description: `**[TEST MODE - Generic]**\n${title}`,
                             url: officialLink,
                             color: 10526880,
                         });
-                        return new Response('Patch sent!');
+                        return new Response('Test patch sent!');
                     }
                     return new Response(`PATCH FOUND:\n${title}\n${link}`);
                 }
@@ -240,12 +253,12 @@ export default {
             
             if (path.endsWith('/send')) {
                 await sendEmbed({
-                    title: 'CS2 Update Detected!',
-                    description: title,
+                    title: '🧪 [TEST] CS2 Update Detected!',
+                    description: `**[TEST MODE - Item 1]**\n${title}`,
                     url: link,
                     color: 16766720,
                 });
-                return new Response('CS2 item 1 sent!');
+                return new Response('Test CS2 item 1 sent!');
             }
 
             return new Response(`CS2 ITEM 1:\n${title}\n${guid}\n${link}`);
@@ -264,12 +277,12 @@ export default {
             
             if (path.endsWith('/send')) {
                 await sendEmbed({
-                    title: 'CS2 Update Detected!',
-                    description: title,
+                    title: '🧪 [TEST] CS2 Update Detected!',
+                    description: `**[TEST MODE - Item 2]**\n${title}`,
                     url: link,
                     color: 16766720,
                 });
-                return new Response('CS2 item 2 sent!');
+                return new Response('Test CS2 item 2 sent!');
             }
 
             return new Response(`CS2 ITEM 2:\n${title}\n${guid}\n${link}`);
@@ -288,12 +301,12 @@ export default {
             
             if (path.endsWith('/send')) {
                 await sendEmbed({
-                    title: 'CS2 Update Detected!',
-                    description: title,
+                    title: '🧪 [TEST] CS2 Update Detected!',
+                    description: `**[TEST MODE - Generic]**\n${title}`,
                     url: link,
                     color: 16766720,
                 });
-                return new Response('CS2 update sent!');
+                return new Response('Test CS2 update sent!');
             }
 
             return new Response(`CS2 Latest Update:\n${title}\n${guid}\n${link}`);
@@ -362,6 +375,28 @@ export default {
             }
         }
 
+        // DEBUG: Cek KV storage
+        if (path === '/debug/kv') {
+            try {
+                const stored = await env.PATCH_KV.get(KV_KEY, 'json');
+                return new Response(JSON.stringify(stored, null, 2), {
+                    headers: { 'Content-Type': 'application/json' }
+                });
+            } catch (e) {
+                return new Response(`ERROR: ${e.message}`, { status: 500 });
+            }
+        }
+
+        // DEBUG: Reset KV storage
+        if (path === '/debug/reset-kv') {
+            try {
+                await env.PATCH_KV.delete(KV_KEY);
+                return new Response('KV storage cleared');
+            } catch (e) {
+                return new Response(`ERROR: ${e.message}`, { status: 500 });
+            }
+        }
+
         return new Response('Not Found', { status: 404 });
     },
 };
@@ -378,19 +413,31 @@ async function checkValorant(last) {
         const link = block.match(/<link>(.*?)<\/link>/)?.[1] || '';
 
         if (title.toLowerCase().includes('patch')) {
-            if (last.valorant !== title) {
-                const officialLink = generateRiotLink(title) || link; // Fallback ke gameriv kalau gagal
-                await sendEmbed({
-                    title: 'VALORANT Patch Detected!',
-                    description: title,
-                    url: officialLink,
-                    color: 10526880,
-                });
-                last.valorant = title;
+            console.log('Valorant Check:', {
+                lastStored: last.valorant,
+                currentTitle: title,
+                isNew: last.valorant !== title
+            });
+            
+            if (!title || title === last.valorant) {
+                console.log('Valorant: No new patch');
+                return;
             }
+            
+            console.log('Valorant: New patch detected, sending notification');
+            const officialLink = generateRiotLink(title) || link;
+            await sendEmbed({
+                title: 'VALORANT Patch Detected!',
+                description: title,
+                url: officialLink,
+                color: 10526880,
+            });
+            last.valorant = title;
             return;
         }
     }
+    
+    console.log('Valorant: No patch found in RSS feed');
 }
 
 async function checkCS2(last) {
@@ -398,7 +445,10 @@ async function checkCS2(last) {
     
     // Ambil item pertama (update terbaru)
     const firstItem = items[0];
-    if (!firstItem) return;
+    if (!firstItem) {
+        console.log('No CS2 items found');
+        return;
+    }
     
     const block = firstItem[1];
     const title = block.match(/<title>(.*?)<\/title>/)?.[1] || '';
@@ -406,16 +456,30 @@ async function checkCS2(last) {
     const guid = block.match(/<guid[^>]*>(.*?)<\/guid>/)?.[1] || '';
     
     // Extract BuildID dari guid (format: "build#20897362")
+    // Fallback: gunakan title sebagai identifier kalau guid tidak ada build#
     const buildMatch = guid.match(/build#(\d+)/);
-    const buildId = buildMatch ? buildMatch[1] : guid;
+    const buildId = buildMatch ? buildMatch[1] : (guid || title);
     
-    if (last.cs2 !== buildId) {
-        await sendEmbed({
-            title: 'CS2 Update Detected!',
-            description: title,
-            url: link,
-            color: 16766720,
-        });
-        last.cs2 = buildId;
+    console.log('CS2 Check:', {
+        lastStored: last.cs2,
+        currentBuildId: buildId,
+        guid: guid,
+        title: title,
+        isNew: last.cs2 !== buildId
+    });
+    
+    // Pastikan buildId valid dan berbeda
+    if (!buildId || buildId === last.cs2) {
+        console.log('CS2: No new update');
+        return;
     }
+    
+    console.log('CS2: New update detected, sending notification');
+    await sendEmbed({
+        title: 'CS2 Update Detected!',
+        description: title,
+        url: link,
+        color: 16766720,
+    });
+    last.cs2 = buildId;
 }
