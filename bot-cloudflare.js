@@ -5,8 +5,13 @@
 const DISCORD_WEBHOOK = 'https://discord.com/api/webhooks/1442501127726825512/AGkXMtYQWBzgeDMdnq37PNPvthIjwggdBZoH1hgQ7IKD3c3kPjqD7Hu6UlHO-v6SRk-0'
 
 const VALORANT_RSS = 'https://www.fragster.com/valorant/feed/';
-// Using CORS proxy to bypass Cloudflare protection
-const CS2_RSS = 'https://api.allorigins.win/raw?url=' + encodeURIComponent('https://steamdb.info/api/PatchnotesRSS/?appid=730');
+// Using CORS proxy to bypass Cloudflare protection (with fallbacks)
+const STEAMDB_RSS_URL = 'https://steamdb.info/api/PatchnotesRSS/?appid=730';
+const CS2_PROXIES = [
+    'https://api.allorigins.win/raw?url=' + encodeURIComponent(STEAMDB_RSS_URL),
+    'https://corsproxy.io/?' + encodeURIComponent(STEAMDB_RSS_URL),
+    'https://api.codetabs.com/v1/proxy?quest=' + encodeURIComponent(STEAMDB_RSS_URL),
+];
 const KV_KEY = 'PATCH_STATE';
 
 // ================================
@@ -86,6 +91,9 @@ async function fetchValorantItems() {
     return [...xml.matchAll(/<item>([\s\S]*?)<\/item>/g)];
 }
 
+// Store last successful proxy for logging
+let lastSuccessfulProxy = null;
+
 async function fetchCS2Items() {
     const advancedHeaders = {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
@@ -94,24 +102,47 @@ async function fetchCS2Items() {
         'Referer': 'https://steamdb.info/',
     };
 
-    try {
-        console.log('Fetching CS2 RSS from SteamDB via proxy...');
-        const response = await fetch(CS2_RSS, {
-            headers: advancedHeaders,
-        });
+    // Try each proxy until one works
+    for (let i = 0; i < CS2_PROXIES.length; i++) {
+        const proxyUrl = CS2_PROXIES[i];
+        const proxyName = ['allorigins', 'corsproxy.io', 'codetabs'][i];
         
-        if (!response.ok) {
-            console.error(`CS2 RSS fetch failed: ${response.status}`);
-            return [];
+        try {
+            console.log(`[CS2] Trying proxy: ${proxyName}...`);
+            const response = await fetch(proxyUrl, {
+                headers: advancedHeaders,
+            });
+            
+            if (!response.ok) {
+                console.error(`[CS2] ${proxyName} failed with status: ${response.status}`);
+                continue; // Try next proxy
+            }
+            
+            const xml = await response.text();
+            
+            // Validate response contains RSS data
+            if (!xml.includes('<item>')) {
+                console.error(`[CS2] ${proxyName} returned invalid data (no <item> found)`);
+                continue; // Try next proxy
+            }
+            
+            const items = [...xml.matchAll(/<item>([\s\S]*?)<\/item>/g)];
+            lastSuccessfulProxy = proxyName;
+            console.log(`[CS2] SUCCESS via ${proxyName} - fetched ${items.length} items`);
+            return items;
+        } catch (error) {
+            console.error(`[CS2] ${proxyName} error: ${error.message}`);
+            continue; // Try next proxy
         }
-        
-        const xml = await response.text();
-        console.log('CS2 RSS fetch successful');
-        return [...xml.matchAll(/<item>([\s\S]*?)<\/item>/g)];
-    } catch (error) {
-        console.error('CS2 RSS fetch error:', error.message);
-        return [];
     }
+    
+    lastSuccessfulProxy = null;
+    console.error('[CS2] All proxies failed!');
+    return [];
+}
+
+function getLastSuccessfulProxy() {
+    return lastSuccessfulProxy;
 }
 
 // ================================
@@ -405,7 +436,9 @@ export default {
 // PRODUCTION LOGIC
 // ================================
 async function checkValorant(last) {
+    console.log('[VALORANT] Fetching RSS...');
     const items = await fetchValorantItems();
+    console.log(`[VALORANT] Fetched ${items.length} items from RSS`);
 
     for (const it of items) {
         const block = it[1];
@@ -413,40 +446,43 @@ async function checkValorant(last) {
         const link = block.match(/<link>(.*?)<\/link>/)?.[1] || '';
 
         if (title.toLowerCase().includes('patch')) {
-            console.log('Valorant Check:', {
-                lastStored: last.valorant,
-                currentTitle: title,
-                isNew: last.valorant !== title
-            });
+            console.log('[VALORANT] --- PATCH CHECK ---');
+            console.log(`[VALORANT] Current patch title: "${title}"`);
+            console.log(`[VALORANT] Stored patch title: "${last.valorant || 'none'}"`);
+            console.log(`[VALORANT] Is new: ${last.valorant !== title}`);
             
             if (!title || title === last.valorant) {
-                console.log('Valorant: No new patch');
+                console.log('[VALORANT] Result: No new patch (same as stored)');
                 return;
             }
             
-            console.log('Valorant: New patch detected, sending notification');
+            console.log('[VALORANT] Result: NEW PATCH DETECTED! Sending notification...');
             const officialLink = generateRiotLink(title) || link;
+            console.log(`[VALORANT] Official link: ${officialLink}`);
             await sendEmbed({
                 title: 'VALORANT Patch Detected!',
                 description: title,
                 url: officialLink,
                 color: 10526880,
             });
+            console.log('[VALORANT] Notification sent!');
             last.valorant = title;
             return;
         }
     }
     
-    console.log('Valorant: No patch found in RSS feed');
+    console.log('[VALORANT] Result: No patch found in RSS feed');
 }
 
 async function checkCS2(last) {
     const items = await fetchCS2Items();
+    const proxyUsed = getLastSuccessfulProxy();
+    console.log(`[CS2] Proxy used: ${proxyUsed || 'none (all failed)'}`);
     
     // Ambil item pertama (update terbaru)
     const firstItem = items[0];
     if (!firstItem) {
-        console.log('No CS2 items found');
+        console.log('[CS2] Result: No items found (fetch failed)');
         return;
     }
     
@@ -456,30 +492,30 @@ async function checkCS2(last) {
     const guid = block.match(/<guid[^>]*>(.*?)<\/guid>/)?.[1] || '';
     
     // Extract BuildID dari guid (format: "build#20897362")
-    // Fallback: gunakan title sebagai identifier kalau guid tidak ada build#
     const buildMatch = guid.match(/build#(\d+)/);
     const buildId = buildMatch ? buildMatch[1] : (guid || title);
     
-    console.log('CS2 Check:', {
-        lastStored: last.cs2,
-        currentBuildId: buildId,
-        guid: guid,
-        title: title,
-        isNew: last.cs2 !== buildId
-    });
+    console.log('[CS2] --- BUILD CHECK ---');
+    console.log(`[CS2] Current build ID: ${buildId}`);
+    console.log(`[CS2] Current title: "${title}"`);
+    console.log(`[CS2] Current GUID: ${guid}`);
+    console.log(`[CS2] Stored build ID: "${last.cs2 || 'none'}"`);
+    console.log(`[CS2] Is new: ${last.cs2 !== buildId}`);
     
     // Pastikan buildId valid dan berbeda
     if (!buildId || buildId === last.cs2) {
-        console.log('CS2: No new update');
+        console.log('[CS2] Result: No new update (same as stored)');
         return;
     }
     
-    console.log('CS2: New update detected, sending notification');
+    console.log('[CS2] Result: NEW UPDATE DETECTED! Sending notification...');
+    console.log(`[CS2] Link: ${link}`);
     await sendEmbed({
         title: 'CS2 Update Detected!',
         description: title,
         url: link,
         color: 16766720,
     });
+    console.log('[CS2] Notification sent!');
     last.cs2 = buildId;
 }
