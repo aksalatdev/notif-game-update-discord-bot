@@ -1,8 +1,8 @@
 // ================================
 // CONFIG (Updated)
 // ================================
-// const DISCORD_WEBHOOK = 'https://discord.com/api/webhooks/1438786471241846855/LH7aQDYD1noDJwlFCpssaSKB8rK_Ca07WQqylcr_q2m6eJwKQh4mbOnBDZjH4BwGYp7e'; MAIN WEBHOOK
-const DISCORD_WEBHOOK = 'https://discord.com/api/webhooks/1442501127726825512/AGkXMtYQWBzgeDMdnq37PNPvthIjwggdBZoH1hgQ7IKD3c3kPjqD7Hu6UlHO-v6SRk-0'
+// const DISCORD_WEBHOOK = ''; MAIN WEBHOOK
+const DISCORD_WEBHOOK = 'ur-webook'
 
 const VALORANT_RSS = 'https://www.fragster.com/valorant/feed/';
 // Using CORS proxy to bypass Cloudflare protection (with fallbacks)
