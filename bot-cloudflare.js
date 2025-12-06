@@ -2,16 +2,26 @@
 // CONFIG (Updated)
 // ================================
 // const DISCORD_WEBHOOK = ''; MAIN WEBHOOK
-const DISCORD_WEBHOOK = 'ur-webook'
+const DISCORD_WEBHOOK = 'ur-webook';
+const LOG_WEBHOOK = '-';
 
-const VALORANT_RSS = 'https://www.fragster.com/valorant/feed/';
 // Using CORS proxy to bypass Cloudflare protection (with fallbacks)
+const GAMERIV_RSS_URL = 'https://gameriv.com/valorant/feed/';
+const VALORANT_PROXIES = [
+    GAMERIV_RSS_URL, // Try direct first
+    'https://api.allorigins.win/raw?url=' + encodeURIComponent(GAMERIV_RSS_URL),
+    'https://corsproxy.io/?' + encodeURIComponent(GAMERIV_RSS_URL),
+];
+
 const STEAMDB_RSS_URL = 'https://steamdb.info/api/PatchnotesRSS/?appid=730';
 const CS2_PROXIES = [
     'https://api.allorigins.win/raw?url=' + encodeURIComponent(STEAMDB_RSS_URL),
     'https://corsproxy.io/?' + encodeURIComponent(STEAMDB_RSS_URL),
     'https://api.codetabs.com/v1/proxy?quest=' + encodeURIComponent(STEAMDB_RSS_URL),
 ];
+
+// Regex untuk detect VALORANT patch - match "VALORANT Patch 11.11" atau "VALORANT Patch Notes 11.10"
+const VALORANT_PATCH_REGEX = /VALORANT Patch (Notes )?(\d+\.\d+)/i;
 const KV_KEY = 'PATCH_STATE';
 
 // ================================
@@ -41,11 +51,11 @@ function decodeHTML(str) {
 // GENERATE RIOT OFFICIAL LINK
 // ================================
 function generateRiotLink(title) {
-    // Extract version dari title (misal: "VALORANT Patch Notes 11.10" → "11.10")
-    const versionMatch = title.match(/patch notes?\s+(\d+\.\d+[a-z]?)/i);
+    // Extract version dari title (misal: "VALORANT Patch Notes 11.10" atau "VALORANT Patch 11.11")
+    const versionMatch = title.match(/VALORANT Patch (Notes )?(\d+\.\d+[a-z]?)/i);
     if (!versionMatch) return null;
 
-    const version = versionMatch[1].replace('.', '-'); // 11.10 → 11-10
+    const version = versionMatch[2].replace('.', '-'); // 11.10 → 11-10
     return `https://playvalorant.com/en-us/news/game-updates/valorant-patch-notes-${version}/`;
 }
 
@@ -77,22 +87,64 @@ async function sendEmbed({ title, description, url, color }) {
 // ================================
 // FETCHERS
 // ================================
-async function fetchValorantItems() {
-    const xml = await fetch(VALORANT_RSS, {
-        headers: {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-            'Accept': 'application/rss+xml, application/xml, text/xml, */*',
-            'Accept-Language': 'en-US,en;q=0.9',
-            'Referer': 'https://gameriv.com/',
-            'Origin': 'https://gameriv.com',
-        },
-    }).then((r) => r.text());
-
-    return [...xml.matchAll(/<item>([\s\S]*?)<\/item>/g)];
-}
 
 // Store last successful proxy for logging
-let lastSuccessfulProxy = null;
+let lastSuccessfulValorantProxy = null;
+
+async function fetchValorantItems() {
+    const advancedHeaders = {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        'Accept': 'application/rss+xml, application/xml, text/xml, */*',
+        'Accept-Language': 'en-US,en;q=0.9',
+        'Referer': 'https://gameriv.com/',
+        'Origin': 'https://gameriv.com',
+    };
+
+    // Try each proxy until one works
+    for (let i = 0; i < VALORANT_PROXIES.length; i++) {
+        const proxyUrl = VALORANT_PROXIES[i];
+        const proxyName = ['direct', 'allorigins', 'corsproxy.io'][i];
+        
+        try {
+            console.log(`[VALORANT] Trying: ${proxyName}...`);
+            const response = await fetch(proxyUrl, {
+                headers: advancedHeaders,
+            });
+            
+            if (!response.ok) {
+                console.error(`[VALORANT] ${proxyName} failed with status: ${response.status}`);
+                continue;
+            }
+            
+            const xml = await response.text();
+            
+            // Validate response contains RSS data
+            if (!xml.includes('<item>')) {
+                console.error(`[VALORANT] ${proxyName} returned invalid data (no <item> found)`);
+                continue;
+            }
+            
+            const items = [...xml.matchAll(/<item>([\s\S]*?)<\/item>/g)];
+            lastSuccessfulValorantProxy = proxyName;
+            console.log(`[VALORANT] SUCCESS via ${proxyName} - fetched ${items.length} items`);
+            return items;
+        } catch (error) {
+            console.error(`[VALORANT] ${proxyName} error: ${error.message}`);
+            continue;
+        }
+    }
+    
+    lastSuccessfulValorantProxy = null;
+    console.error('[VALORANT] All sources failed!');
+    return [];
+}
+
+function getLastSuccessfulValorantProxy() {
+    return lastSuccessfulValorantProxy;
+}
+
+// Store last successful proxy for CS2 logging
+let lastSuccessfulCS2Proxy = null;
 
 async function fetchCS2Items() {
     const advancedHeaders = {
@@ -127,7 +179,7 @@ async function fetchCS2Items() {
             }
             
             const items = [...xml.matchAll(/<item>([\s\S]*?)<\/item>/g)];
-            lastSuccessfulProxy = proxyName;
+            lastSuccessfulCS2Proxy = proxyName;
             console.log(`[CS2] SUCCESS via ${proxyName} - fetched ${items.length} items`);
             return items;
         } catch (error) {
@@ -136,13 +188,61 @@ async function fetchCS2Items() {
         }
     }
     
-    lastSuccessfulProxy = null;
+    lastSuccessfulCS2Proxy = null;
     console.error('[CS2] All proxies failed!');
     return [];
 }
 
-function getLastSuccessfulProxy() {
-    return lastSuccessfulProxy;
+function getLastSuccessfulCS2Proxy() {
+    return lastSuccessfulCS2Proxy;
+}
+
+// ================================
+// SEND LOG TO DISCORD
+// ================================
+async function sendLog(logData) {
+    const { valorantResult, cs2Result, errors } = logData;
+    
+    const valorantStatus = valorantResult.success 
+        ? (valorantResult.newPatch ? `🆕 NEW: ${valorantResult.version}` : `✅ ${valorantResult.version}`)
+        : `❌ Failed (${valorantResult.error})`;
+    
+    const cs2Status = cs2Result.success
+        ? (cs2Result.newUpdate ? `🆕 NEW: ${cs2Result.buildId}` : `✅ ${cs2Result.buildId}`)
+        : `❌ Failed (${cs2Result.error})`;
+
+    const embed = {
+        title: '🤖 Cron Run Complete',
+        color: errors.length > 0 ? 16711680 : 5763719, // Red if errors, green if OK
+        fields: [
+            {
+                name: 'VALORANT',
+                value: `${valorantStatus}\nProxy: ${valorantResult.proxy || 'N/A'}`,
+                inline: true
+            },
+            {
+                name: 'CS2',
+                value: `${cs2Status}\nProxy: ${cs2Result.proxy || 'N/A'}`,
+                inline: true
+            }
+        ],
+        timestamp: new Date().toISOString(),
+        footer: { text: 'Azar PatchBot Log' }
+    };
+
+    if (errors.length > 0) {
+        embed.fields.push({
+            name: '⚠️ Errors',
+            value: errors.join('\n').substring(0, 1000),
+            inline: false
+        });
+    }
+
+    await fetch(LOG_WEBHOOK, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ embeds: [embed] }),
+    });
 }
 
 // ================================
@@ -152,9 +252,17 @@ export default {
     async scheduled(event, env, ctx) {
         console.log('=== SCHEDULED RUN START ===');
         
+        const logData = {
+            valorantResult: { success: false, version: null, proxy: null, newPatch: false, error: null },
+            cs2Result: { success: false, buildId: null, proxy: null, newUpdate: false, error: null },
+            errors: []
+        };
+        
         // Cek apakah KV tersedia
         if (!env.PATCH_KV) {
             console.error('CRITICAL: PATCH_KV is not bound!');
+            logData.errors.push('KV not bound!');
+            await sendLog(logData);
             return;
         }
         
@@ -164,18 +272,25 @@ export default {
             console.log('Current state loaded:', JSON.stringify(last));
         } catch (kvReadError) {
             console.error('Failed to read from KV:', kvReadError);
+            logData.errors.push(`KV read error: ${kvReadError.message}`);
         }
 
         try {
-            await checkValorant(last);
+            const result = await checkValorant(last);
+            logData.valorantResult = result;
         } catch (e) {
             console.error('Valorant error:', e);
+            logData.valorantResult.error = e.message;
+            logData.errors.push(`Valorant: ${e.message}`);
         }
 
         try {
-            await checkCS2(last);
+            const result = await checkCS2(last);
+            logData.cs2Result = result;
         } catch (e) {
             console.error('CS2 error:', e);
+            logData.cs2Result.error = e.message;
+            logData.errors.push(`CS2: ${e.message}`);
         }
 
         console.log('Attempting to save state:', JSON.stringify(last));
@@ -187,7 +302,11 @@ export default {
             console.log('State saved and verified:', JSON.stringify(verify));
         } catch (kvError) {
             console.error('CRITICAL: Failed to save to KV:', kvError);
+            logData.errors.push(`KV save error: ${kvError.message}`);
         }
+        
+        // Send log to Discord
+        await sendLog(logData);
         
         console.log('=== SCHEDULED RUN END ===');
     },
@@ -253,18 +372,21 @@ export default {
                 const title = decodeHTML(block.match(/<title>(.*?)<\/title>/)?.[1] || '');
                 const link = block.match(/<link>(.*?)<\/link>/)?.[1] || '';
 
-                if (title.toLowerCase().includes('patch')) {
+                // Pakai regex baru untuk detect patch
+                const patchMatch = title.match(VALORANT_PATCH_REGEX);
+                if (patchMatch) {
+                    const version = patchMatch[2];
                     if (path.endsWith('/send')) {
                         const officialLink = generateRiotLink(title) || link;
                         await sendEmbed({
                             title: '🧪 [TEST] VALORANT Patch Detected!',
-                            description: `**[TEST MODE - Generic]**\n${title}`,
+                            description: `**[TEST MODE]**\nPatch ${version}\n${title}`,
                             url: officialLink,
                             color: 10526880,
                         });
                         return new Response('Test patch sent!');
                     }
-                    return new Response(`PATCH FOUND:\n${title}\n${link}`);
+                    return new Response(`PATCH FOUND:\nVersion: ${version}\nTitle: ${title}\nLink: ${link}`);
                 }
             }
 
@@ -436,24 +558,48 @@ export default {
 // PRODUCTION LOGIC
 // ================================
 async function checkValorant(last) {
-    console.log('[VALORANT] Fetching RSS...');
+    const result = {
+        success: false,
+        version: last.valorant || null,
+        proxy: null,
+        newPatch: false,
+        error: null
+    };
+    
     const items = await fetchValorantItems();
-    console.log(`[VALORANT] Fetched ${items.length} items from RSS`);
+    const proxyUsed = getLastSuccessfulValorantProxy();
+    result.proxy = proxyUsed || 'all failed';
+    console.log(`[VALORANT] Proxy used: ${proxyUsed || 'none (all failed)'}`);
 
+    if (items.length === 0) {
+        console.log('[VALORANT] Result: No items found (fetch failed)');
+        result.error = 'fetch failed';
+        return result;
+    }
+
+    // Loop semua items untuk cari patch notes
     for (const it of items) {
         const block = it[1];
         const title = decodeHTML(block.match(/<title>(.*?)<\/title>/)?.[1] || '');
         const link = block.match(/<link>(.*?)<\/link>/)?.[1] || '';
 
-        if (title.toLowerCase().includes('patch')) {
-            console.log('[VALORANT] --- PATCH CHECK ---');
-            console.log(`[VALORANT] Current patch title: "${title}"`);
-            console.log(`[VALORANT] Stored patch title: "${last.valorant || 'none'}"`);
-            console.log(`[VALORANT] Is new: ${last.valorant !== title}`);
+        // Match dengan regex: "VALORANT Patch 11.11" atau "VALORANT Patch Notes 11.10"
+        const patchMatch = title.match(VALORANT_PATCH_REGEX);
+        
+        if (patchMatch) {
+            const version = patchMatch[2]; // Extract version number (e.g., "11.11")
+            result.version = version;
+            result.success = true;
             
-            if (!title || title === last.valorant) {
-                console.log('[VALORANT] Result: No new patch (same as stored)');
-                return;
+            console.log('[VALORANT] --- PATCH CHECK ---');
+            console.log(`[VALORANT] Found patch article: "${title}"`);
+            console.log(`[VALORANT] Extracted version: ${version}`);
+            console.log(`[VALORANT] Stored version: "${last.valorant || 'none'}"`);
+            console.log(`[VALORANT] Is new: ${last.valorant !== version}`);
+            
+            if (!version || version === last.valorant) {
+                console.log('[VALORANT] Result: No new patch (same version as stored)');
+                return result;
             }
             
             console.log('[VALORANT] Result: NEW PATCH DETECTED! Sending notification...');
@@ -461,29 +607,43 @@ async function checkValorant(last) {
             console.log(`[VALORANT] Official link: ${officialLink}`);
             await sendEmbed({
                 title: 'VALORANT Patch Detected!',
-                description: title,
+                description: `Patch ${version}\n${title}`,
                 url: officialLink,
                 color: 10526880,
             });
             console.log('[VALORANT] Notification sent!');
-            last.valorant = title;
-            return;
+            result.newPatch = true;
+            last.valorant = version; // Simpan version number, bukan full title
+            return result;
         }
     }
     
-    console.log('[VALORANT] Result: No patch found in RSS feed');
+    console.log('[VALORANT] Result: No patch notes found in RSS feed');
+    result.success = true; // Fetch berhasil, tapi ga ada patch
+    result.error = 'no patch in feed';
+    return result;
 }
 
 async function checkCS2(last) {
+    const result = {
+        success: false,
+        buildId: last.cs2 || null,
+        proxy: null,
+        newUpdate: false,
+        error: null
+    };
+    
     const items = await fetchCS2Items();
-    const proxyUsed = getLastSuccessfulProxy();
+    const proxyUsed = getLastSuccessfulCS2Proxy();
+    result.proxy = proxyUsed || 'all failed';
     console.log(`[CS2] Proxy used: ${proxyUsed || 'none (all failed)'}`);
     
     // Ambil item pertama (update terbaru)
     const firstItem = items[0];
     if (!firstItem) {
         console.log('[CS2] Result: No items found (fetch failed)');
-        return;
+        result.error = 'fetch failed';
+        return result;
     }
     
     const block = firstItem[1];
@@ -494,6 +654,8 @@ async function checkCS2(last) {
     // Extract BuildID dari guid (format: "build#20897362")
     const buildMatch = guid.match(/build#(\d+)/);
     const buildId = buildMatch ? buildMatch[1] : (guid || title);
+    result.buildId = buildId;
+    result.success = true;
     
     console.log('[CS2] --- BUILD CHECK ---');
     console.log(`[CS2] Current build ID: ${buildId}`);
@@ -505,11 +667,12 @@ async function checkCS2(last) {
     // Pastikan buildId valid dan berbeda
     if (!buildId || buildId === last.cs2) {
         console.log('[CS2] Result: No new update (same as stored)');
-        return;
+        return result;
     }
     
     console.log('[CS2] Result: NEW UPDATE DETECTED! Sending notification...');
     console.log(`[CS2] Link: ${link}`);
+    result.newUpdate = true;
     await sendEmbed({
         title: 'CS2 Update Detected!',
         description: title,
@@ -518,4 +681,5 @@ async function checkCS2(last) {
     });
     console.log('[CS2] Notification sent!');
     last.cs2 = buildId;
+    return result;
 }
